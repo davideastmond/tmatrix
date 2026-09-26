@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export async function POST(req: NextRequest, res: NextResponse) {
+export async function POST(req: NextRequest) {
   const requestBody = (await req.json()) as { username: string };
   const { username } = requestBody;
   if (!username) {
