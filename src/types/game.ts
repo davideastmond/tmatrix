@@ -1,5 +1,5 @@
 export type PlayerId = "player1" | "player2";
-
+export type GameStatus = "waiting" | "playing" | "ended";
 export interface Player {
   id: PlayerId;
   name: string;
@@ -23,6 +23,6 @@ export interface GameState {
   board: CellValue[][]; // 12x12 grid array
   turn: PlayerId;
   players: Record<PlayerId, Player>;
-  status: "playing" | "ended";
+  status: GameStatus;
   winner: PlayerId | "draw" | null;
 }

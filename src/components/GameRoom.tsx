@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { GameBoard } from "@/components/GameBoard"; // Reuse your clean modular board component
+import { GetRoomByIdAPIResponse } from "@/types/api";
+import type { RoomData } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
-
-interface RoomData {
-  roomId: string;
-  status: "waiting" | "playing" | "ended";
-  player1Name: string;
-  player2Name: string | null;
-}
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 export const GameRoom = () => {
@@ -29,13 +24,13 @@ export const GameRoom = () => {
 
     const checkLobbyStatus = async () => {
       try {
-        const response = await fetch(`/api/rooms/${params?.roomId}`);
+        const response: Response = await fetch(`/api/rooms/${params?.roomId}`);
         if (!response.ok) {
           // if (response.status === 404) navigate("/");
           // return;
         }
-        const data = await response.json();
-        setRoom(data);
+        const data = (await response.json()) as GetRoomByIdAPIResponse;
+        setRoom(data.room);
 
         // Optimization: If a player joined and the game is active, turn off the lobby loop
         if (data.status === "playing" || data.status === "ended") {
