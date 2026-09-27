@@ -17,7 +17,6 @@ export const GameRoom = () => {
 
   const inviteUrl = `${BASE_URL}/join/${params?.roomId}`;
 
-  console.log("BEAT", params?.roomId);
   // 📡 POLLING LOOP: Pings database every 2 seconds ONLY while waiting for player 2
   useEffect(() => {
     if (!params?.roomId) return;
