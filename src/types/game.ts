@@ -26,9 +26,3 @@ export interface GameState {
   status: "playing" | "ended";
   winner: PlayerId | "draw" | null;
 }
-
-export interface RoomCreateResponse {
-  message: string;
-  roomId: string;
-  role: PlayerId;
-}
