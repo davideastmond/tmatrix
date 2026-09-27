@@ -5,7 +5,7 @@ import {
   isBoardFull,
   processTurn,
 } from "@/lib";
-import type { GameState } from "@/types/types";
+import type { GameState } from "@/types/game";
 import { useEffect, useState } from "react";
 
 export const GameBoard = () => {
