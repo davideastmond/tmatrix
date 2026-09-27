@@ -1,11 +1,5 @@
 import type { GameState, PlayerId } from "./game";
 
-export interface RoomCreateResponse {
-  message: string;
-  roomId: string;
-  role: PlayerId;
-}
-
 export interface RoomData {
   id: string;
   status: "playing" | "ended" | "waiting";
