@@ -58,7 +58,8 @@ export default function JoinRoom() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to enter game lobby.");
+        setErrorMessage(data.error || "Failed to enter game lobby.");
+        return;
       }
 
       // Clean redirect over to the active board screen layout
