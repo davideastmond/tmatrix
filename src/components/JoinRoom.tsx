@@ -1,13 +1,15 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import type { GetRoomByIdAPIResponse } from "@/types/api";
+import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-
 export default function JoinRoom() {
   // Unwrap params using React.use() if your Next.js configuration mandates it,
   // or read it directly depending on your router layout version
   const params = useParams<{ roomId: string }>();
   const roomId = params?.roomId;
+
+  const router = useRouter();
 
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,8 +26,8 @@ export default function JoinRoom() {
       try {
         const response = await fetch(`/api/rooms/${roomId}`);
         if (response.ok) {
-          const data = await response.json();
-          setRoomDetails({ hostName: data.player1Name });
+          const data = (await response.json()) as GetRoomByIdAPIResponse;
+          setRoomDetails({ hostName: data.room.player1Name });
         }
       } catch (err) {
         console.error("Failed to pre-fetch room configurations:", err);
@@ -60,7 +62,7 @@ export default function JoinRoom() {
       }
 
       // Clean redirect over to the active board screen layout
-      window.location.href = `/room/${roomId}`;
+      router.push(`/room/${roomId}`);
     } catch (err: any) {
       setErrorMessage(
         err.message || "An unexpected server connection error occurred.",
