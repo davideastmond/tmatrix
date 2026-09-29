@@ -1,10 +1,10 @@
 "use client";
-import { GameRoom } from "@/components/GameRoom";
+import { PVPOnlineComponent } from "@/components/PVPOnlineComponent";
 
-export default function RoomPage() {
+export default function PVPOnlineWrapper() {
   return (
     <div>
-      <GameRoom />
+      <PVPOnlineComponent />
     </div>
   );
 }

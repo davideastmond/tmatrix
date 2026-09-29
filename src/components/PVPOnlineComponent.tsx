@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { GameBoard } from "@/components/GameBoard"; // Reuse your clean modular board component
 import { GetRoomByIdAPIResponse } from "@/types/api";
 import type { RoomData } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-export const GameRoom = () => {
+export const PVPOnlineComponent = () => {
   const params = useParams<{ roomId: string }>();
 
   const router = useRouter();
@@ -42,7 +41,7 @@ export const GameRoom = () => {
       }
     };
 
-    // checkLobbyStatus();
+    checkLobbyStatus();
     const interval = setInterval(checkLobbyStatus, 2000);
 
     return () => clearInterval(interval);
@@ -62,9 +61,7 @@ export const GameRoom = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400"></div>
-        <p className="mt-4 text-sm text-slate-400">
-          Synchronizing Session Hub...
-        </p>
+        <p className="mt-4 text-sm text-slate-400">Loading session data...</p>
       </div>
     );
   }
@@ -112,7 +109,7 @@ export const GameRoom = () => {
 
       {/* ────────────────────────── ACTIVE GAMEPLAY SCREEN ────────────────────────── */}
       {/* Once the database shifts to playing, swap out the loader and boot your core layout */}
-      {room.status !== "waiting" && <GameBoard />}
+      {/* {room.status !== "waiting" && <GameBoard />} */}
     </div>
   );
 };
