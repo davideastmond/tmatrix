@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   try {
     const roomData = await getRoomById(roomId);
-    return NextResponse.json({ room: roomData });
+    return NextResponse.json({ ...roomData });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch room data" },
