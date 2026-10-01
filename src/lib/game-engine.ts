@@ -1,4 +1,4 @@
-import type { CellValue, GamePiece, PlayerId } from "../types/types";
+import type { CellValue, GamePiece, PlayerId } from "../types/game";
 import { getNeighbors } from "./board-utils";
 
 function getCellOwner(cell: CellValue): PlayerId | null {

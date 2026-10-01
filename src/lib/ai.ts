@@ -1,4 +1,4 @@
-import type { CellValue, Coordinate, PlayerId } from "../types/types";
+import type { CellValue, Coordinate, PlayerId } from "../types/game";
 import { getNeighbors } from "./board-utils";
 import { BOARD_SIZE } from "./constants";
 import { isPieceCaptured, processTurn } from "./game-engine";
