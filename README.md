@@ -45,6 +45,30 @@ This project includes:
 - The player with the higher score wins.
 - If both players finish with the same score, the result is a draw.
 
+## CPU / AI Logic (WIP)
+
+The CPU opponent evaluates every available empty cell before playing. It does not make a random move; instead, it scores each candidate move by simulating the resulting board state.
+
+The AI prioritizes moves that:
+
+- capture multiple opponent pieces immediately
+- keep the CPU piece safe from being trapped on the next turn
+- block the human player from making a strong capture
+- improve positional control around edges and center spaces
+- create pressure on active enemy pieces that can be captured later
+
+The evaluation is driven by the logic in the AI engine, which:
+
+- simulates a placement with the same capture rules as the main game
+- checks whether the move would cause a self-trap penalty
+- rewards safe captures and punishes dangerous ones
+- favors strategic placement near strong board areas
+- chooses the highest-scoring valid move, with a random tiebreaker when multiple moves are equally strong
+
+This means the CPU behaves as a tactical scoring engine rather than a simple greedy player, balancing offense, defense, and board control.
+
+I'm still tweaking the algorithm to improve the CPU's decision-making and overall challenge.
+
 ## Getting Started
 
 Install dependencies:
