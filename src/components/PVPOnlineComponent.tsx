@@ -32,7 +32,7 @@ export default function PVPOnlineComponent() {
   // Use a ref to keep track of the active interval across components
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 📡 1. LONG-POLLING ENGINE: Sync state variables with MongoDB Atlas
+  // 1. LONG-POLLING ENGINE: Sync state variables with MongoDB Atlas
   useEffect(() => {
     if (!params?.roomId) return;
 
@@ -72,7 +72,7 @@ export default function PVPOnlineComponent() {
     };
   }, [params?.roomId, router]);
 
-  // 📥 2. TRANSMIT PLAYER ACTIONS TO ROUTE HANDLER
+  // 2. TRANSMIT PLAYER ACTIONS TO ROUTE HANDLER
   const handleGridInteraction = async (row: number, col: number) => {
     if (!room || room.status !== "playing" || isSubmitting) return;
 
@@ -209,11 +209,11 @@ export default function PVPOnlineComponent() {
                 </div>
               ) : isMyTurn ? (
                 <span className="text-emerald-400 animate-pulse bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase">
-                  ⚡ Your Move! Choose an empty space.
+                  Your Move! Choose an empty space.
                 </span>
               ) : (
                 <span className="text-slate-400 bg-slate-950/40 border border-slate-800 px-4 py-1.5 rounded-full text-xs font-medium">
-                  ⏳ Waiting for opponent to place...
+                  Waiting for opponent to place...
                 </span>
               )}
             </div>
