@@ -1,4 +1,4 @@
-import type { CellValue, Coordinate, GameState } from "../types/types";
+import type { CellValue, Coordinate, GameState } from "../types/game";
 import { BOARD_SIZE } from "./constants";
 
 export function getNeighbors(row: number, col: number): Coordinate[] {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomCreateResponse } from "@/types/types";
+import type { RoomCreateResponse } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -71,6 +71,13 @@ export const Home: React.FC = () => {
           <p className="text-red-500 text-sm mt-2">{errorMessage}</p>
         )}
       </form>
+
+      <a
+        href="/game"
+        className="mt-4 text-emerald-400 hover:text-emerald-300 underline text-sm"
+      >
+        Play vs CPU
+      </a>
     </div>
   );
 };
