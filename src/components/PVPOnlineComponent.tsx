@@ -1,23 +1,9 @@
 "use client";
 
 import { GameBoard } from "@/components/GameBoard"; // Update path to your clean agnostic board
+import type { RoomData } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-
-interface RoomData {
-  roomId: string;
-  status: "waiting" | "playing" | "ended";
-  player1Name: string;
-  player2Name: string | null;
-  boardState: {
-    board: any[][];
-  };
-  turn: "player1" | "player2";
-  yourRole: "player1" | "player2";
-  player1Score: number;
-  player2Score: number;
-  winner: "player1" | "player2" | "draw" | null;
-}
 
 export default function PVPOnlineComponent() {
   const params = useParams<{ roomId: string }>();
