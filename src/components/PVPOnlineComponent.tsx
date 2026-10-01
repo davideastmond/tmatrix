@@ -9,7 +9,9 @@ interface RoomData {
   status: "waiting" | "playing" | "ended";
   player1Name: string;
   player2Name: string | null;
-  boardState: any[][];
+  boardState: {
+    board: any[][];
+  };
   turn: "player1" | "player2";
   yourRole: "player1" | "player2";
   player1Score: number;
@@ -47,7 +49,6 @@ export default function PVPOnlineComponent() {
         }
 
         const data: RoomData = await response.json();
-        console.log("room data", data);
         setRoom(data);
         setIsLoading(false);
 
@@ -221,7 +222,7 @@ export default function PVPOnlineComponent() {
           {/* Core Agnostic UI View Grid Injection */}
           {room.boardState && (
             <GameBoard
-              board={room.boardState}
+              board={room.boardState.board}
               disabled={!isMyTurn || isSubmitting}
               onCellClick={handleGridInteraction}
             />
