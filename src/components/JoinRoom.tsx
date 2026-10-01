@@ -1,6 +1,6 @@
 "use client";
 
-import type { GetRoomByIdAPIResponse } from "@/types/api";
+import { RoomData } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 export default function JoinRoom() {
@@ -26,8 +26,8 @@ export default function JoinRoom() {
       try {
         const response = await fetch(`/api/rooms/${roomId}`);
         if (response.ok) {
-          const data = (await response.json()) as GetRoomByIdAPIResponse;
-          setRoomDetails({ hostName: data.room.player1Name });
+          const data: RoomData = await response.json();
+          setRoomDetails({ hostName: data.player1Name });
         }
       } catch (err) {
         console.error("Failed to pre-fetch room configurations:", err);
