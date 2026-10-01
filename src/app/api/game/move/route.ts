@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (room.boardState[row][col] !== null) {
+    if (room.boardState.board[row][col] !== null) {
       return NextResponse.json(
         { error: "Target grid space is already occupied." },
         { status: 400 },
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     // 5. Authoritative Rules Evaluation
     // Destructure the updated TurnResult properties: newBoard, moverPoints, opponentPoints
     const { newBoard, moverPoints, opponentPoints } = processTurn(
-      room.boardState,
+      room.boardState.board,
       row,
       col,
       decoded.roomRole,
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       { id: roomId },
       {
         $set: {
-          boardState: newBoard,
+          boardState: { board: newBoard },
           turn: nextTurn,
           status: updatedStatus,
           winner: finalWinner,
