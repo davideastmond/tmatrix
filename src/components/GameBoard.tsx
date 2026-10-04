@@ -6,12 +6,14 @@ interface GameBoardProps {
   board: CellValue[][];
   disabled?: boolean;
   onCellClick: (row: number, col: number) => void;
+  lastCpuMove?: { row: number; col: number } | null;
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   board,
   disabled = false,
   onCellClick,
+  lastCpuMove = null,
 }) => {
   return (
     <div
@@ -39,6 +41,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               ? cell.isCaptured
               : false
             : false;
+          const isLastCpuMove =
+            lastCpuMove?.row === rowIndex && lastCpuMove?.col === colIndex;
 
           return (
             <button
@@ -49,6 +53,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 !isOccupied && !disabled
                   ? "bg-slate-800 hover:bg-slate-700 cursor-pointer"
                   : "bg-slate-900/60"
+              } ${
+                isLastCpuMove
+                  ? "ring-2 ring-amber-300/80 shadow-[0_0_0_1px_rgba(252,211,77,0.35)] bg-slate-700/80"
+                  : ""
               }`}
             >
               {/* Visual Piece Tokens */}

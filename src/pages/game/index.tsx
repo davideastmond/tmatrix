@@ -13,15 +13,19 @@ export default function HumanVsCpuGame() {
     createInitialGameState(),
   );
   const [isThinking, setIsThinking] = useState(false);
+  const [lastCpuMove, setLastCpuMove] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
 
   // 2. Automated AI Trigger Loop
   useEffect(() => {
     // Only fire if it's the CPU's turn and the game is active
     if (gameState.turn === "player2" && gameState.status === "playing") {
-      setIsThinking(true);
-
       // Create an intentional short delay so the CPU feels organic
       const timer = setTimeout(() => {
+        setIsThinking(true);
+
         const cpuMove = getBestCPUMove(gameState.board, "player2");
 
         if (cpuMove) {
@@ -50,6 +54,7 @@ export default function HumanVsCpuGame() {
             else finalWinner = "draw";
           }
 
+          setLastCpuMove({ row: cpuMove.row, col: cpuMove.col });
           setGameState({
             ...gameState,
             board: newBoard,
@@ -65,6 +70,7 @@ export default function HumanVsCpuGame() {
       return () => clearTimeout(timer);
     }
   }, [
+    gameState,
     gameState.turn,
     gameState.status,
     gameState.board,
@@ -120,6 +126,7 @@ export default function HumanVsCpuGame() {
   const handleReset = () => {
     setGameState(createInitialGameState());
     setIsThinking(false);
+    setLastCpuMove(null);
   };
 
   // Determine global UI interaction allowances
@@ -182,6 +189,7 @@ export default function HumanVsCpuGame() {
         board={gameState.board}
         disabled={isBoardDisabled}
         onCellClick={handleHumanCellClick}
+        lastCpuMove={lastCpuMove}
       />
 
       {/* Action Tray */}
@@ -189,7 +197,7 @@ export default function HumanVsCpuGame() {
         onClick={handleReset}
         className="mt-6 px-6 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-sm font-medium transition-colors shadow-md cursor-pointer"
       >
-        Reset Match Engine
+        Reset Game
       </button>
     </div>
   );
