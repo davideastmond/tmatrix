@@ -1,7 +1,13 @@
-import type { CellValue, Coordinate, PlayerId } from "../types/game";
-import { getNeighbors } from "./board-utils";
+import { CellValue, Coordinate, PlayerId } from "@/types/game";
+import { getNeighbors, isBoardFull } from "./board-utils";
 import { BOARD_SIZE } from "./constants";
-import { isPieceCaptured, processTurn } from "./game-engine";
+import { processTurn } from "./game-engine";
+
+const MAX_DEPTH = 5;
+const MAX_CANDIDATES_PER_NODE = 12;
+const TACTICAL_CAPTURE_WEIGHT = 22000;
+const SELF_TRAP_PENALTY = 26000;
+const CENTER_BIAS_WEIGHT = 120;
 
 function getCellOwner(cell: CellValue): PlayerId | null {
   if (cell === null) return null;
@@ -13,262 +19,312 @@ function isCellCaptured(cell: CellValue): boolean {
   return typeof cell === "object" && cell !== null && cell.isCaptured;
 }
 
-function cloneBoard(board: CellValue[][]): CellValue[][] {
-  return board.map((row) =>
-    row.map((cell) =>
-      cell === null ? null : typeof cell === "string" ? cell : { ...cell },
-    ),
-  );
-}
-
-function getOtherPlayer(player: PlayerId): PlayerId {
-  return player === "player1" ? "player2" : "player1";
-}
-
-function isInCorner(row: number, col: number): boolean {
+function getCenterBias(row: number, col: number): number {
+  const centerDistance = Math.abs(row - (BOARD_SIZE - 1) / 2);
+  const verticalDistance = Math.abs(col - (BOARD_SIZE - 1) / 2);
   return (
-    (row === 0 || row === BOARD_SIZE - 1) &&
-    (col === 0 || col === BOARD_SIZE - 1)
+    Math.max(0, 6 - (centerDistance + verticalDistance)) * CENTER_BIAS_WEIGHT
   );
 }
 
-function isOnEdge(row: number, col: number): boolean {
-  return (
-    row === 0 || row === BOARD_SIZE - 1 || col === 0 || col === BOARD_SIZE - 1
-  );
-}
-
-function isPieceThreatened(
+function getMoveUrgency(
   board: CellValue[][],
   row: number,
   col: number,
-  owner: PlayerId,
-): boolean {
-  const opponent = getOtherPlayer(owner);
-  const emptyNeighbors = getNeighbors(row, col).filter(
-    (n) => board[n.row][n.col] === null,
-  );
-
-  if (emptyNeighbors.length === 0) {
-    return false;
-  }
-
-  return emptyNeighbors.some((n) => {
-    const simulated = cloneBoard(board);
-    simulated[n.row][n.col] = opponent;
-    return isPieceCaptured(simulated, row, col, owner);
-  });
-}
-
-function isMoveDangerous(
-  board: CellValue[][],
-  row: number,
-  col: number,
-  owner: PlayerId,
-): boolean {
-  const opponent = getOtherPlayer(owner);
-  const simulatedBoard = cloneBoard(board);
-  simulatedBoard[row][col] = { owner, isCaptured: false };
-
-  return getNeighbors(row, col).some((n) => {
-    if (board[n.row][n.col] !== null) {
-      return false;
-    }
-
-    const responseBoard = cloneBoard(simulatedBoard);
-    responseBoard[n.row][n.col] = opponent;
-    return isPieceCaptured(responseBoard, row, col, owner);
-  });
-}
-
-function getPositionValue(row: number, col: number): number {
-  if (isInCorner(row, col)) return 32;
-  if (isOnEdge(row, col)) return 18;
-
-  const center = (BOARD_SIZE - 1) / 2;
-  const centerDistance = Math.abs(row - center) + Math.abs(col - center);
-  if (centerDistance <= 2) return 10;
-  return 4;
-}
-
-function getImmediateDefenseValue(
-  board: CellValue[][],
-  row: number,
-  col: number,
-  cpuId: PlayerId,
+  player: PlayerId,
 ): number {
-  let defenseValue = 0;
-
-  for (let r = 0; r < BOARD_SIZE; r += 1) {
-    for (let c = 0; c < BOARD_SIZE; c += 1) {
-      const cell = board[r][c];
-      if (getCellOwner(cell) !== cpuId || isCellCaptured(cell)) {
-        continue;
-      }
-
-      if (!isPieceThreatened(board, r, c, cpuId)) {
-        continue;
-      }
-
-      const distance = Math.abs(r - row) + Math.abs(c - col);
-      if (distance <= 1) defenseValue += 5000;
-      else if (distance <= 2) defenseValue += 2000;
-    }
-  }
-
-  return defenseValue;
-}
-
-function getHumanCaptureBlockValue(
-  board: CellValue[][],
-  row: number,
-  col: number,
-  cpuId: PlayerId,
-): number {
-  const humanId = getOtherPlayer(cpuId);
-  let blockValue = 0;
-
-  for (let r = 0; r < BOARD_SIZE; r += 1) {
-    for (let c = 0; c < BOARD_SIZE; c += 1) {
-      const cell = board[r][c];
-      if (getCellOwner(cell) !== humanId || isCellCaptured(cell)) {
-        continue;
-      }
-
-      if (!isPieceThreatened(board, r, c, humanId)) {
-        continue;
-      }
-
-      const moveDistance = Math.abs(r - row) + Math.abs(c - col);
-      if (moveDistance <= 1) blockValue += 3000;
-      else if (moveDistance <= 2) blockValue += 1200;
-    }
-  }
-
-  return blockValue;
-}
-
-function hasTrapPressure(
-  board: CellValue[][],
-  row: number,
-  col: number,
-  cpuId: PlayerId,
-): boolean {
-  const humanId = getOtherPlayer(cpuId);
+  const opponent: PlayerId = player === "player1" ? "player2" : "player1";
   const neighbors = getNeighbors(row, col);
+  let urgency = 0;
 
-  return neighbors.some((n) => {
-    const cell = board[n.row][n.col];
-    if (getCellOwner(cell) !== humanId || isCellCaptured(cell)) {
-      return false;
+  for (const neighbor of neighbors) {
+    const cell = board[neighbor.row][neighbor.col];
+    if (cell === null) continue;
+
+    const owner = getCellOwner(cell);
+    if (owner !== opponent || isCellCaptured(cell)) continue;
+
+    const surrounding = getNeighbors(neighbor.row, neighbor.col);
+    const trapped = surrounding.every((n) => {
+      const friend = board[n.row][n.col];
+      if (friend === null || isCellCaptured(friend)) return false;
+      return getCellOwner(friend) === player;
+    });
+
+    if (trapped) {
+      urgency += 3500;
     }
+  }
 
-    // Captured pieces can no longer help encircle and capture an opponent.
-    const adjacentCpuCount = getNeighbors(n.row, n.col).filter((adjacent) => {
-      const adjacentCell = board[adjacent.row][adjacent.col];
-      return (
-        getCellOwner(adjacentCell) === cpuId && !isCellCaptured(adjacentCell)
-      );
-    }).length;
-
-    return adjacentCpuCount >= 2;
-  });
+  return urgency;
 }
 
-export function evaluateMoveScore(
+function countImmediateCaptures(
   board: CellValue[][],
-  row: number,
-  col: number,
-  cpuId: PlayerId,
+  player: PlayerId,
 ): number {
-  const turnResult = processTurn(board, row, col, cpuId);
-  const immediateCaptures = turnResult.moverPoints;
-  const selfCaptured = turnResult.opponentPoints > 0;
-  const moveDangerous = isMoveDangerous(board, row, col, cpuId);
-  const neighbors = getNeighbors(row, col);
-  const humanId = getOtherPlayer(cpuId);
+  let total = 0;
 
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== null) continue;
+      const { moverPoints } = processTurn(board, r, c, player);
+      total += moverPoints;
+    }
+  }
+
+  return total;
+}
+
+function countSafePieces(board: CellValue[][], player: PlayerId): number {
+  let total = 0;
+
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const cell = board[r][c];
+      if (cell === null || isCellCaptured(cell)) continue;
+
+      const owner = getCellOwner(cell);
+      if (owner !== player) continue;
+
+      const neighbors = getNeighbors(r, c);
+      const emptyNeighbors = neighbors.filter(
+        (n) => board[n.row][n.col] === null,
+      ).length;
+      const enemyNeighbors = neighbors.filter((n) => {
+        const candidate = board[n.row][n.col];
+        if (candidate === null || isCellCaptured(candidate)) return false;
+        return getCellOwner(candidate) !== player;
+      }).length;
+
+      if (emptyNeighbors >= 2) total += 18;
+      if (enemyNeighbors === 0) total += 12;
+      if (enemyNeighbors === 1) total -= 18;
+      if (enemyNeighbors >= 3) total -= 42;
+      total += getCenterBias(r, c) / 200;
+    }
+  }
+
+  return total;
+}
+
+function evaluateStaticBoard(board: CellValue[][], cpuId: PlayerId): number {
+  const humanId: PlayerId = cpuId === "player1" ? "player2" : "player1";
   let score = 0;
 
-  // 1. Aggressive capture priority: capture opponent pieces whenever the move is safe.
-  score += immediateCaptures * 12000;
-  if (immediateCaptures > 0 && !moveDangerous) {
-    score += 5000;
-  }
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const cell = board[r][c];
+      if (cell === null) continue;
 
-  // 2. Safety-first defense: avoid moves that leave the CPU's newly placed piece exposed.
-  // A move that gets the placed piece captured on the spot is strictly worse than one
-  // that merely risks capture on the opponent's next turn, so it is penalized harder.
-  if (selfCaptured) {
-    score -= 15000;
-  } else if (moveDangerous) {
-    score -= 9000;
-  }
-  score += getImmediateDefenseValue(board, row, col, cpuId);
+      const owner = getCellOwner(cell);
+      const captured = isCellCaptured(cell);
+      if (owner === null) continue;
 
-  // 3. Block human capture opportunities before they become immediate threats.
-  score += getHumanCaptureBlockValue(board, row, col, cpuId);
+      if (captured) {
+        score += owner === cpuId ? -5000 : 5000;
+        continue;
+      }
 
-  // 4. Pressure surrounding human pieces and attack when safe.
-  neighbors.forEach((n) => {
-    const targetCell = board[n.row][n.col];
-    const targetOwner = getCellOwner(targetCell);
+      const neighbors = getNeighbors(r, c);
+      const emptyNeighbors = neighbors.filter(
+        (n) => board[n.row][n.col] === null,
+      ).length;
+      const enemyNeighbors = neighbors.filter((n) => {
+        const candidate = board[n.row][n.col];
+        if (candidate === null || isCellCaptured(candidate)) return false;
+        return getCellOwner(candidate) !== owner;
+      }).length;
 
-    if (targetOwner === humanId && !isCellCaptured(targetCell)) {
-      score += moveDangerous ? 0 : 900;
+      const value = owner === cpuId ? 1 : -1;
+      score += value * (emptyNeighbors * 18 + 10);
+      score += (value * getCenterBias(r, c)) / 40;
+
+      if (enemyNeighbors === 0) {
+        score += value * 75;
+      }
+      if (enemyNeighbors === 1) {
+        score -= value * 60;
+      }
+      if (enemyNeighbors >= 3) {
+        score -= value * 120;
+      }
     }
-
-    // Only active (non-captured) pieces can help form future encirclements.
-    if (targetOwner === cpuId && !isCellCaptured(targetCell)) {
-      score += 40;
-    }
-  });
-
-  // 5. Favor strong board positions: edges and corners give strategic access.
-  score += getPositionValue(row, col);
-
-  // 6. Build traps and active pressure on human pieces.
-  if (hasTrapPressure(board, row, col, cpuId)) {
-    score += 700;
   }
 
-  // 7. Penalize any move that creates an immediate self-trap.
-  if (isPieceThreatened(board, row, col, cpuId)) {
-    score -= 6000;
-  }
+  score += countSafePieces(board, cpuId) * 50;
+  score -= countSafePieces(board, humanId) * 50;
+
+  score +=
+    (countImmediateCaptures(board, cpuId) -
+      countImmediateCaptures(board, humanId) * 1.1) *
+    600;
 
   return score;
+}
+
+function getCandidateMoves(
+  board: CellValue[][],
+  player: PlayerId,
+): Coordinate[] {
+  const moves: Array<{ move: Coordinate; score: number }> = [];
+
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== null) continue;
+
+      const { moverPoints, opponentPoints } = processTurn(board, r, c, player);
+      const moveScore =
+        moverPoints * TACTICAL_CAPTURE_WEIGHT -
+        opponentPoints * SELF_TRAP_PENALTY +
+        getMoveUrgency(board, r, c, player) +
+        getCenterBias(r, c) * 2;
+
+      const candidate = { move: { row: r, col: c }, score: moveScore };
+      const hasPressure = getNeighbors(r, c).some(
+        (n) => board[n.row][n.col] !== null,
+      );
+
+      if (moverPoints > 0 || opponentPoints === 0 || hasPressure) {
+        moves.push(candidate);
+      }
+    }
+  }
+
+  moves.sort((a, b) => b.score - a.score);
+
+  const count = Math.min(MAX_CANDIDATES_PER_NODE, moves.length);
+  return moves.slice(0, count).map((entry) => entry.move);
+}
+
+function minimax(
+  board: CellValue[][],
+  depth: number,
+  alpha: number,
+  beta: number,
+  isMaximizing: boolean,
+  cpuId: PlayerId,
+): number {
+  const humanId: PlayerId = cpuId === "player1" ? "player2" : "player1";
+  const activePlayer = isMaximizing ? cpuId : humanId;
+
+  if (depth === 0 || isBoardFull(board)) {
+    return evaluateStaticBoard(board, cpuId);
+  }
+
+  const moves = getCandidateMoves(board, activePlayer);
+  if (moves.length === 0) {
+    return evaluateStaticBoard(board, cpuId);
+  }
+
+  if (isMaximizing) {
+    let maxEval = -Infinity;
+
+    for (const move of moves) {
+      const { newBoard } = processTurn(board, move.row, move.col, activePlayer);
+      const evaluation = minimax(
+        newBoard,
+        depth - 1,
+        alpha,
+        beta,
+        false,
+        cpuId,
+      );
+      maxEval = Math.max(maxEval, evaluation);
+      alpha = Math.max(alpha, evaluation);
+      if (beta <= alpha) break;
+    }
+
+    return maxEval;
+  }
+
+  let minEval = Infinity;
+
+  for (const move of moves) {
+    const { newBoard } = processTurn(board, move.row, move.col, activePlayer);
+    const evaluation = minimax(newBoard, depth - 1, alpha, beta, true, cpuId);
+    minEval = Math.min(minEval, evaluation);
+    beta = Math.min(beta, evaluation);
+    if (beta <= alpha) break;
+  }
+
+  return minEval;
 }
 
 export function getBestCPUMove(
   board: CellValue[][],
   cpuId: PlayerId,
 ): Coordinate | null {
-  let bestScore = Number.NEGATIVE_INFINITY;
-  const candidates: Coordinate[] = [];
+  let bestScore = -Infinity;
+  let chosenMove: Coordinate | null = null;
+  const humanId: PlayerId = cpuId === "player1" ? "player2" : "player1";
+  const candidates: Array<{ move: Coordinate; score: number }> = [];
 
-  for (let row = 0; row < BOARD_SIZE; row += 1) {
-    for (let col = 0; col < BOARD_SIZE; col += 1) {
-      if (board[row][col] !== null) {
-        continue;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== null) continue;
+
+      const turn = processTurn(board, r, c, cpuId);
+      const moveScore =
+        turn.moverPoints * TACTICAL_CAPTURE_WEIGHT -
+        turn.opponentPoints * SELF_TRAP_PENALTY +
+        getMoveUrgency(board, r, c, cpuId) +
+        getCenterBias(r, c);
+
+      if (turn.moverPoints > 0) {
+        return { row: r, col: c };
       }
 
-      const currentScore = evaluateMoveScore(board, row, col, cpuId);
+      const opponentImmediate = (() => {
+        let danger = 0;
+        for (let rr = 0; rr < BOARD_SIZE; rr++) {
+          for (let cc = 0; cc < BOARD_SIZE; cc++) {
+            if (board[rr][cc] !== null) continue;
+            const response = processTurn(turn.newBoard, rr, cc, humanId);
+            if (response.moverPoints > 0) {
+              danger += response.moverPoints * 2200;
+            }
+          }
+        }
+        return danger;
+      })();
 
-      if (currentScore > bestScore) {
-        bestScore = currentScore;
-        candidates.length = 0;
-        candidates.push({ row, col });
-      } else if (currentScore === bestScore) {
-        candidates.push({ row, col });
-      }
+      const finalScore = moveScore - opponentImmediate;
+      candidates.push({ move: { row: r, col: c }, score: finalScore });
     }
   }
 
   if (candidates.length === 0) {
-    return null;
+    return chosenMove;
   }
 
-  const randomIndex = Math.floor(Math.random() * candidates.length);
-  return candidates[randomIndex];
+  candidates.sort((a, b) => b.score - a.score);
+  const bestCandidate = candidates[0];
+  const topMoves = candidates
+    .filter((entry) => entry.score >= bestCandidate.score - 1500)
+    .slice(0, 5)
+    .map((entry) => entry.move);
+
+  for (const move of topMoves) {
+    const { newBoard } = processTurn(board, move.row, move.col, cpuId);
+    const evaluation = minimax(
+      newBoard,
+      MAX_DEPTH - 1,
+      -Infinity,
+      Infinity,
+      false,
+      cpuId,
+    );
+
+    if (evaluation > bestScore) {
+      bestScore = evaluation;
+      chosenMove = move;
+    }
+  }
+
+  if (chosenMove) {
+    return chosenMove;
+  }
+
+  return bestCandidate.move;
 }
