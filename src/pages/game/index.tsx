@@ -197,7 +197,7 @@ export default function HumanVsCpuGame() {
         onClick={handleReset}
         className="mt-6 px-6 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-sm font-medium transition-colors shadow-md cursor-pointer"
       >
-        Reset Match Engine
+        Reset Game
       </button>
     </div>
   );
