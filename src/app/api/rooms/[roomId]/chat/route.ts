@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/db/db";
 import type { ChatMessage } from "@/types/chat";
+import type { JWTPayload } from "@/types/auth";
 import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
@@ -10,12 +11,6 @@ const JWT_SECRET =
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_HISTORY = 100;
-
-interface JWTPayload {
-  playerId: string;
-  roomRole: "player1" | "player2";
-  roomId: string;
-}
 
 type AuthResult =
   | { decoded: JWTPayload }
