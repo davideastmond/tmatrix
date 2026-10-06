@@ -7,6 +7,8 @@ const MAX_DEPTH = 5;
 const MAX_CANDIDATES_PER_NODE = 12;
 const TACTICAL_CAPTURE_WEIGHT = 22000;
 const SELF_TRAP_PENALTY = 26000;
+const TRAP_SETUP_WEIGHT = 13000;
+const TRAP_THREAT_WEIGHT = 18000;
 const CENTER_BIAS_WEIGHT = 120;
 
 function getCellOwner(cell: CellValue): PlayerId | null {
@@ -25,6 +27,64 @@ function getCenterBias(row: number, col: number): number {
   return (
     Math.max(0, 6 - (centerDistance + verticalDistance)) * CENTER_BIAS_WEIGHT
   );
+}
+
+function countOccupiedCells(board: CellValue[][]): number {
+  let total = 0;
+
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (board[row][col] !== null) total += 1;
+    }
+  }
+
+  return total;
+}
+
+function countTrapSetups(board: CellValue[][], player: PlayerId): number {
+  const opponent: PlayerId = player === "player1" ? "player2" : "player1";
+  let total = 0;
+
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (board[row][col] !== null) continue;
+
+      const neighbors = getNeighbors(row, col);
+      if (neighbors.length === 0) continue;
+
+      const isTrapSquare = neighbors.every((n) => {
+        const cell = board[n.row][n.col];
+        if (cell === null || isCellCaptured(cell)) return false;
+        return getCellOwner(cell) === opponent;
+      });
+
+      if (isTrapSquare) {
+        total += 1;
+      }
+    }
+  }
+
+  return total;
+}
+
+function countImmediateSelfTrapRisks(
+  board: CellValue[][],
+  player: PlayerId,
+): number {
+  let total = 0;
+
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (board[row][col] !== null) continue;
+
+      const { opponentPoints } = processTurn(board, row, col, player);
+      if (opponentPoints > 0) {
+        total += 1;
+      }
+    }
+  }
+
+  return total;
 }
 
 function getMoveUrgency(
@@ -160,6 +220,12 @@ function evaluateStaticBoard(board: CellValue[][], cpuId: PlayerId): number {
       countImmediateCaptures(board, humanId) * 1.1) *
     600;
 
+  score -= countTrapSetups(board, cpuId) * 1400;
+  score += countTrapSetups(board, humanId) * 1400;
+
+  score += countImmediateSelfTrapRisks(board, humanId) * TRAP_THREAT_WEIGHT;
+  score -= countImmediateSelfTrapRisks(board, cpuId) * TRAP_THREAT_WEIGHT;
+
   return score;
 }
 
@@ -173,12 +239,24 @@ function getCandidateMoves(
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (board[r][c] !== null) continue;
 
-      const { moverPoints, opponentPoints } = processTurn(board, r, c, player);
+      const { moverPoints, opponentPoints, newBoard } = processTurn(
+        board,
+        r,
+        c,
+        player,
+      );
+      const opponent: PlayerId = player === "player1" ? "player2" : "player1";
+      const earlyGameBias = countOccupiedCells(board) < 18 ? 2200 : 0;
+      const trapThreats = countImmediateSelfTrapRisks(newBoard, opponent);
       const moveScore =
         moverPoints * TACTICAL_CAPTURE_WEIGHT -
         opponentPoints * SELF_TRAP_PENALTY +
         getMoveUrgency(board, r, c, player) +
-        getCenterBias(r, c) * 2;
+        getCenterBias(r, c) * 2 +
+        earlyGameBias +
+        countTrapSetups(newBoard, opponent) * TRAP_SETUP_WEIGHT -
+        countTrapSetups(newBoard, player) * (TRAP_SETUP_WEIGHT / 2) +
+        trapThreats * TRAP_THREAT_WEIGHT;
 
       const candidate = { move: { row: r, col: c }, score: moveScore };
       const hasPressure = getNeighbors(r, c).some(
@@ -269,7 +347,10 @@ export function getBestCPUMove(
         turn.moverPoints * TACTICAL_CAPTURE_WEIGHT -
         turn.opponentPoints * SELF_TRAP_PENALTY +
         getMoveUrgency(board, r, c, cpuId) +
-        getCenterBias(r, c);
+        getCenterBias(r, c) +
+        countImmediateSelfTrapRisks(turn.newBoard, humanId) * TRAP_THREAT_WEIGHT +
+        countTrapSetups(turn.newBoard, humanId) * TRAP_SETUP_WEIGHT -
+        countTrapSetups(turn.newBoard, cpuId) * (TRAP_SETUP_WEIGHT / 2);
 
       if (turn.moverPoints > 0) {
         return { row: r, col: c };

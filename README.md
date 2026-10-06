@@ -52,6 +52,7 @@ The CPU opponent evaluates every available empty cell before playing. It does no
 The AI prioritizes moves that:
 
 - capture multiple opponent pieces immediately
+- set up obvious traps that leave the human player with self-trapping follow-up moves
 - keep the CPU piece safe from being trapped on the next turn
 - block the human player from making a strong capture
 - improve positional control around edges and center spaces
