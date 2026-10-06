@@ -3,9 +3,9 @@
 import { GameBoard } from "@/components/GameBoard"; // Update with your exact component path
 import { useEffect, useState } from "react";
 
-import { getBestCPUMove } from "@/lib";
 import { createInitialGameState, isBoardFull } from "@/lib/board-utils";
 import { processTurn } from "@/lib/game-engine";
+import { getBestMove } from "@/lib/tmatrix-ai";
 import { GameState } from "@/types/game";
 export default function HumanVsCpuGame() {
   // 1. Maintain the local game loop state
@@ -26,7 +26,7 @@ export default function HumanVsCpuGame() {
       const timer = setTimeout(() => {
         setIsThinking(true);
 
-        const cpuMove = getBestCPUMove(gameState.board, "player2");
+        const cpuMove = getBestMove(gameState.board, "player2");
 
         if (cpuMove) {
           const { newBoard, moverPoints, opponentPoints } = processTurn(
