@@ -44,6 +44,8 @@ let chatIndexEnsured = false;
 async function ensureChatIndex(db: Awaited<ReturnType<typeof connectToDatabase>>["db"]) {
   if (chatIndexEnsured) return;
   await db.collection("chat_messages").createIndex({ roomId: 1, createdAt: 1 });
+  // TTL index: auto-delete messages older than 7 days (single-field required by MongoDB).
+  await db.collection("chat_messages").createIndex({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
   chatIndexEnsured = true;
 }
 
