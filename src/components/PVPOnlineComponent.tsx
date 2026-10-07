@@ -4,6 +4,7 @@ import { GameBoard } from "@/components/GameBoard"; // Update path to your clean
 import type { RoomData } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import ChatDrawer from "./ChatDrawer";
 
 export default function PVPOnlineComponent() {
   const params = useParams<{ roomId: string }>();
@@ -100,6 +101,19 @@ export default function PVPOnlineComponent() {
     }
   };
 
+  const getPlayerDisplayNames = (room: RoomData) => {
+    return {
+      displayName:
+        room.yourRole === "player1"
+          ? (room.player1Name as string)
+          : (room.player2Name as string),
+      opponentDisplayName:
+        room.yourRole === "player1"
+          ? (room.player2Name as string)
+          : (room.player1Name as string),
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
@@ -158,6 +172,12 @@ export default function PVPOnlineComponent() {
       {room.status !== "waiting" && (
         <div className="flex flex-col items-center animate-scaleUp">
           {/* Unified Dynamic Scoreboard HUD */}
+          <ChatDrawer
+            roomId={room.roomId}
+            yourRole={room.yourRole}
+            displayName={getPlayerDisplayNames(room).displayName}
+            enabled={true}
+          />
           <header className="text-center mb-6">
             <div className="flex gap-8 bg-slate-800 px-8 py-3 rounded-xl border border-slate-700 shadow-lg items-center mb-4">
               <div
