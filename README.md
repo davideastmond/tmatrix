@@ -68,7 +68,7 @@ Here's what happens on every CPU turn, in plain language:
 3. **Breathing room.** Every empty space next to a piece is a "liberty." More liberties means harder to surround, so the AI prefers moves that give its pieces room and squeeze yours.
 4. **Central control.** Pieces near the center have more neighbors, which makes them naturally harder to trap than pieces on edges and corners.
 
-**Tuning it.** The main knob is thinking time: `getBestMove(board, cpuId, { timeLimitMs: 800 })`. More time means deeper thought and stronger play; less time means a faster, weaker opponent — handy for difficulty levels.
+**Tuning it.** The easiest knob is the difficulty preset: `getBestMove(board, cpuId, { difficulty: "easy" })`. Easy, medium, and hard each set thinking time, search depth, and how often the AI deliberately plays a sub-optimal move (25% of the time on easy, never on hard). You can still fine-tune the raw knobs directly — `timeLimitMs`, `maxDepth`, `randomness` — and any explicitly passed value overrides the preset.
 
 ## Getting Started
 

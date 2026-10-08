@@ -75,7 +75,33 @@ export interface AIOptions {
   timeLimitMs?: number;
   /** Hard cap on search depth (iterative deepening stops here). Default: 6. */
   maxDepth?: number;
+  /**
+   * Difficulty preset. When set, supplies defaults for timeLimitMs,
+   * maxDepth and randomness — any of those passed explicitly still win.
+   */
+  difficulty?: Difficulty;
+  /**
+   * Probability (0..1) of deliberately playing a sub-optimal move, picked
+   * uniformly from the top candidates of the last completed search depth.
+   * Makes weaker levels feel human instead of just shallow. Default: 0.
+   */
+  randomness?: number;
 }
+
+/** CPU difficulty presets. */
+export type Difficulty = "easy" | "medium" | "hard";
+
+export interface DifficultySettings {
+  timeLimitMs: number;
+  maxDepth: number;
+  randomness: number;
+}
+
+export const DIFFICULTY_SETTINGS: Record<Difficulty, DifficultySettings> = {
+  easy: { timeLimitMs: 150, maxDepth: 2, randomness: 0.25 },
+  medium: { timeLimitMs: 400, maxDepth: 4, randomness: 0.05 },
+  hard: { timeLimitMs: 800, maxDepth: 6, randomness: 0 },
+};
 
 /* ------------------------------------------------------------------ */
 /* Board helpers — rules mirror src/lib/game-engine.ts                 */
@@ -542,7 +568,8 @@ function negamax(
  *
  * @param boardInput 12x12 board of CellValue (never mutated).
  * @param aiId       which side the AI plays.
- * @param options    timeLimitMs (default 800), maxDepth (default 6).
+ * @param options    timeLimitMs (default 800), maxDepth (default 6),
+ *                   difficulty preset, randomness (default 0).
  * @returns the chosen cell, or null when the board is full.
  */
 export function getBestMove(
@@ -550,8 +577,12 @@ export function getBestMove(
   aiId: PlayerId,
   options: AIOptions = {},
 ): Coordinate | null {
-  const timeLimitMs = options.timeLimitMs ?? 800;
-  const maxDepth = options.maxDepth ?? 6;
+  const preset = options.difficulty
+    ? DIFFICULTY_SETTINGS[options.difficulty]
+    : undefined;
+  const timeLimitMs = options.timeLimitMs ?? preset?.timeLimitMs ?? 800;
+  const maxDepth = options.maxDepth ?? preset?.maxDepth ?? 6;
+  const randomness = options.randomness ?? preset?.randomness ?? 0;
 
   // Private working copy — the caller's board is never touched.
   const board = boardInput.map((row) => row.slice());
@@ -567,6 +598,7 @@ export function getBestMove(
   deadline = Date.now() + timeLimitMs;
 
   let bestMove = legal[0];
+  let lastRootScores: Array<{ flat: number; score: number }> = [];
 
   try {
     for (let depth = 1; depth <= maxDepth; depth++) {
@@ -575,6 +607,7 @@ export function getBestMove(
       let localMove = bestMove;
       // Previous iteration's best move is searched first (best ordering).
       const moves = orderMoves(board, aiId, bestMove, 0);
+      const rootScores: Array<{ flat: number; score: number }> = [];
       for (const flat of moves) {
         const r = (flat / BOARD_SIZE) | 0;
         const c = flat % BOARD_SIZE;
@@ -590,6 +623,7 @@ export function getBestMove(
           1,
         );
         undoMove(board, res);
+        rootScores.push({ flat, score });
         if (score > localBest) {
           localBest = score;
           localMove = flat;
@@ -597,10 +631,26 @@ export function getBestMove(
         if (score > alpha) alpha = score;
       }
       bestMove = localMove;
+      // Only fully completed depths count — a TIME_UP throw skips this line.
+      lastRootScores = rootScores;
     }
   } catch (e) {
     if (e !== TIME_UP) throw e;
     // Time ran out mid-iteration: bestMove is still the last completed depth.
+  }
+
+  // Deliberate imperfection for weaker difficulties: with probability
+  // `randomness`, play a random move from the top candidates instead of
+  // the best one. Every candidate is still a reasonable move — just not
+  // always the optimal one — so it feels human, not broken.
+  if (
+    randomness > 0 &&
+    lastRootScores.length > 1 &&
+    Math.random() < randomness
+  ) {
+    const ranked = [...lastRootScores].sort((a, b) => b.score - a.score);
+    const pool = ranked.slice(0, Math.min(5, ranked.length));
+    bestMove = pool[(Math.random() * pool.length) | 0].flat;
   }
 
   return { row: (bestMove / BOARD_SIZE) | 0, col: bestMove % BOARD_SIZE };
