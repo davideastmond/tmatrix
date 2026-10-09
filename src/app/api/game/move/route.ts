@@ -1,18 +1,13 @@
 import { connectToDatabase } from "@/db/db";
 import { isBoardFull } from "@/lib/board-utils";
 import { processTurn } from "@/lib/game-engine";
+import type { JWTPayload } from "@/types/auth";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "fallback-local-development-secret-key";
-
-interface JWTPayload {
-  playerId: string;
-  roomRole: "player1" | "player2";
-  roomId: string;
-}
 
 export async function POST(request: NextRequest) {
   try {

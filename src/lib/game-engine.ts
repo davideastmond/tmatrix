@@ -59,12 +59,36 @@ export function processTurn(
   );
   newBoard[placedRow][placedCol] = activePlayer;
 
+  const opponentId: PlayerId =
+    activePlayer === "player1" ? "player2" : "player1";
+
+  // Evaluate every capture against the same post-placement board, before
+  // marking anything as captured. A move that simultaneously traps its own
+  // piece and enemy pieces (dual capture) therefore scores for both sides,
+  // instead of the self-trap swallowing the enemy captures.
   const placedPieceCaptured = isPlacementInCaptureSituation(
     newBoard,
     placedRow,
     placedCol,
     activePlayer,
   );
+
+  const capturedCoordinates = new Set<string>();
+  const adjacentNeighbors = getNeighbors(placedRow, placedCol);
+
+  adjacentNeighbors.forEach((n) => {
+    const neighbor = newBoard[n.row][n.col];
+    const neighborKey = `${n.row}:${n.col}`;
+
+    if (getCellOwner(neighbor) === opponentId && !isCellCaptured(neighbor)) {
+      if (
+        isPieceCaptured(newBoard, n.row, n.col, opponentId) &&
+        !capturedCoordinates.has(neighborKey)
+      ) {
+        capturedCoordinates.add(neighborKey);
+      }
+    }
+  });
 
   if (placedPieceCaptured) {
     newBoard[placedRow][placedCol] = {
@@ -73,26 +97,12 @@ export function processTurn(
     } as GamePiece;
   }
 
-  const capturedCoordinates = new Set<string>();
-  const opponentId: PlayerId =
-    activePlayer === "player1" ? "player2" : "player1";
-  const adjacentNeighbors = getNeighbors(placedRow, placedCol);
-
-  adjacentNeighbors.forEach((n) => {
-    const neighbor = newBoard[n.row][n.col];
-    const neighborKey = `${n.row}:${n.col}`;
-
-    if (getCellOwner(neighbor) === opponentId && !isCellCaptured(neighbor)) {
-      if (isPieceCaptured(newBoard, n.row, n.col, opponentId)) {
-        if (!capturedCoordinates.has(neighborKey)) {
-          capturedCoordinates.add(neighborKey);
-          newBoard[n.row][n.col] = {
-            owner: opponentId,
-            isCaptured: true,
-          } as GamePiece;
-        }
-      }
-    }
+  capturedCoordinates.forEach((key) => {
+    const [r, c] = key.split(":").map(Number);
+    newBoard[r][c] = {
+      owner: opponentId,
+      isCaptured: true,
+    } as GamePiece;
   });
 
   return {

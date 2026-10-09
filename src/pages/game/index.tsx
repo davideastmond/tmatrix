@@ -5,8 +5,12 @@ import { useEffect, useState } from "react";
 
 import { createInitialGameState, isBoardFull } from "@/lib/board-utils";
 import { processTurn } from "@/lib/game-engine";
-import { getBestMove } from "@/lib/tmatrix-ai";
+import { getBestMove, type Difficulty } from "@/lib/tmatrix-ai";
 import { GameState } from "@/types/game";
+
+const DIFFICULTY_STORAGE_KEY = "tmatrix:difficulty";
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+
 export default function HumanVsCpuGame() {
   // 1. Maintain the local game loop state
   const [gameState, setGameState] = useState<GameState>(
@@ -17,6 +21,22 @@ export default function HumanVsCpuGame() {
     row: number;
     col: number;
   } | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => {
+    if (typeof window === "undefined") return "hard";
+    const saved = window.localStorage.getItem(DIFFICULTY_STORAGE_KEY);
+    return saved === "easy" || saved === "medium" || saved === "hard"
+      ? saved
+      : "hard";
+  });
+
+  // Persist the difficulty preference; applies from the next CPU move.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DIFFICULTY_STORAGE_KEY, difficulty);
+    } catch {
+      // Storage unavailable (private mode, etc.) — preference just won't stick.
+    }
+  }, [difficulty]);
 
   // 2. Automated AI Trigger Loop
   useEffect(() => {
@@ -26,7 +46,7 @@ export default function HumanVsCpuGame() {
       const timer = setTimeout(() => {
         setIsThinking(true);
 
-        const cpuMove = getBestMove(gameState.board, "player2");
+        const cpuMove = getBestMove(gameState.board, "player2", { difficulty });
 
         if (cpuMove) {
           const { newBoard, moverPoints, opponentPoints } = processTurn(
@@ -76,6 +96,7 @@ export default function HumanVsCpuGame() {
     gameState.board,
     gameState.players,
     gameState.winner,
+    difficulty,
   ]);
 
   // 3. Human Placement Input Handler
@@ -181,6 +202,25 @@ export default function HumanVsCpuGame() {
               🟢 Your Turn! Secure a space.
             </span>
           )}
+        </div>
+        {/* Difficulty Selector */}
+        <div className="mt-4 inline-flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg p-1">
+          <span className="text-[11px] uppercase tracking-wider text-slate-400 px-2">
+            CPU difficulty
+          </span>
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d}
+              onClick={() => setDifficulty(d)}
+              className={`px-3 py-1 rounded-md text-xs font-semibold capitalize transition-colors cursor-pointer ${
+                difficulty === d
+                  ? "bg-emerald-500 text-slate-950"
+                  : "text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
         </div>
       </header>
 

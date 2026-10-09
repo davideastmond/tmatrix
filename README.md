@@ -33,6 +33,11 @@ This project includes:
 - When this happens, the opposing player receives 1 point as a penalty for the self-trap.
 - This creates a tactical risk: aggressive moves can score captures, but poorly placed pieces can also hand points to the opponent.
 
+### Dual captures
+
+- Captures are evaluated simultaneously: if a single move traps both the newly placed piece and enemy pieces, both sides score — the active player gets 1 point per captured enemy piece, and the opponent gets 1 point for the self-trapped piece.
+- This makes sacrifice trades a legitimate tactic: giving up one piece to take two (or more) is a net gain.
+
 ### Scoring
 
 - Each opponent piece captured by a move awards 1 point to the active player.
@@ -45,29 +50,30 @@ This project includes:
 - The player with the higher score wins.
 - If both players finish with the same score, the result is a draw.
 
-## CPU / AI Logic (WIP)
+## How the AI Thinks
 
-The CPU opponent evaluates every available empty cell before playing. It does not make a random move; instead, it scores each candidate move by simulating the resulting board state.
+The CPU opponent (`src/lib/tmatrix-ai.ts`) doesn't just react to the board — it thinks ahead, the way a chess player does: *"if I play here, they'll probably play there, then I can play here..."*
 
-The AI prioritizes moves that:
+Here's what happens on every CPU turn, in plain language:
 
-- capture multiple opponent pieces immediately
-- keep the CPU piece safe from being trapped on the next turn
-- block the human player from making a strong capture
-- improve positional control around edges and center spaces
-- create pressure on active enemy pieces that can be captured later
+**It plays out future moves.** The AI explores sequences of moves several turns deep, scoring each resulting position. It assumes you'll play your best replies, so the move it finally picks is the one with the best *guaranteed* outcome — not just the one that looks good right now. This is what lets it set traps and see through yours, which a move-by-move greedy player can never do.
 
-The evaluation is driven by the logic in the AI engine, which:
+**It thinks on a clock.** The AI starts by thinking one move ahead, then two, then three, and so on until its time budget runs out (about 0.8 seconds per move by default). Because it works in layers, it always has an answer ready — if time runs out mid-thought, it simply plays the best move from the last fully completed layer.
 
-- simulates a placement with the same capture rules as the main game
-- checks whether the move would cause a self-trap penalty
-- rewards safe captures and punishes dangerous ones
-- favors strategic placement near strong board areas
-- chooses the highest-scoring valid move, with a random tiebreaker when multiple moves are equally strong
+**It ignores hopeless paths.** While exploring, the AI tracks the best outcome found so far. The moment a line of play proves it can't beat that, the AI stops exploring it and moves on. This pruning is what makes thinking several moves ahead feasible on a 12×12 board.
 
-This means the CPU behaves as a tactical scoring engine rather than a simple greedy player, balancing offense, defense, and board control.
+**It never stops mid-capture.** Cutting off thought at a fixed depth can be misleading — stopping right before an obvious capture lands makes a bad position look fine. So when the AI reaches its depth limit in the middle of a tactical exchange, it keeps thinking (captures only) until the dust settles.
 
-I'm still tweaking the algorithm to improve the CPU's decision-making and overall challenge.
+**It remembers positions.** Different move orders often lead to the same board. The AI caches every position it has fully analyzed, so it never pays for the same thinking twice — and it tries the most promising moves first.
+
+**It judges positions like this, in order of importance:**
+
+1. **Score.** Captured pieces decide the game, so the AI cares about the score difference above everything else.
+2. **Pieces about to be captured.** A piece with only one empty neighbor is one move away from being surrounded. The AI treats these as urgent — saving its own, hunting yours.
+3. **Breathing room.** Every empty space next to a piece is a "liberty." More liberties means harder to surround, so the AI prefers moves that give its pieces room and squeeze yours.
+4. **Central control.** Pieces near the center have more neighbors, which makes them naturally harder to trap than pieces on edges and corners.
+
+**Tuning it.** The easiest knob is the difficulty preset: `getBestMove(board, cpuId, { difficulty: "easy" })`. Easy, medium, and hard each set thinking time, search depth, and how often the AI deliberately plays a sub-optimal move (25% of the time on easy, never on hard). You can still fine-tune the raw knobs directly — `timeLimitMs`, `maxDepth`, `randomness` — and any explicitly passed value overrides the preset.
 
 ## Getting Started
 
