@@ -212,13 +212,10 @@ function doMove(
 
   const undo: UndoRecord = { row, col, selfTrapped: false, captured: [] };
 
-  if (isPieceCaptured(board, row, col, player)) {
-    undo.selfTrapped = true;
-    h ^=
-      zobristKey(row, col, stateOf(player)) ^
-      zobristKey(row, col, stateOf({ owner: player, isCaptured: true }));
-    board[row][col] = { owner: player, isCaptured: true };
-  }
+  // Evaluate captures on the post-placement board before marking anything,
+  // mirroring processTurn: a dual capture (own piece + enemies) scores for
+  // both sides instead of the self-trap swallowing the enemy captures.
+  const selfTrapped = isPieceCaptured(board, row, col, player);
 
   let moverPoints = 0;
   forEachNeighbor(row, col, (r, c) => {
@@ -229,13 +226,26 @@ function doMove(
       isPieceCaptured(board, r, c, enemy)
     ) {
       undo.captured.push(r * BOARD_SIZE + c);
-      h ^=
-        zobristKey(r, c, stateOf(cell)) ^
-        zobristKey(r, c, stateOf({ owner: enemy, isCaptured: true }));
-      board[r][c] = { owner: enemy, isCaptured: true };
       moverPoints++;
     }
   });
+
+  if (selfTrapped) {
+    undo.selfTrapped = true;
+    h ^=
+      zobristKey(row, col, stateOf(player)) ^
+      zobristKey(row, col, stateOf({ owner: player, isCaptured: true }));
+    board[row][col] = { owner: player, isCaptured: true };
+  }
+  for (const flat of undo.captured) {
+    const r = (flat / BOARD_SIZE) | 0;
+    const c = flat % BOARD_SIZE;
+    const cell = board[r][c];
+    h ^=
+      zobristKey(r, c, stateOf(cell)) ^
+      zobristKey(r, c, stateOf({ owner: enemy, isCaptured: true }));
+    board[r][c] = { owner: enemy, isCaptured: true };
+  }
 
   return {
     undo,

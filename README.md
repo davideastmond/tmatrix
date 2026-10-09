@@ -33,6 +33,11 @@ This project includes:
 - When this happens, the opposing player receives 1 point as a penalty for the self-trap.
 - This creates a tactical risk: aggressive moves can score captures, but poorly placed pieces can also hand points to the opponent.
 
+### Dual captures
+
+- Captures are evaluated simultaneously: if a single move traps both the newly placed piece and enemy pieces, both sides score — the active player gets 1 point per captured enemy piece, and the opponent gets 1 point for the self-trapped piece.
+- This makes sacrifice trades a legitimate tactic: giving up one piece to take two (or more) is a net gain.
+
 ### Scoring
 
 - Each opponent piece captured by a move awards 1 point to the active player.
