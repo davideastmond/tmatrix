@@ -56,19 +56,7 @@
  * The input board is never mutated. No dependencies.
  */
 
-export type PlayerId = "player1" | "player2";
-
-export interface GamePiece {
-  owner: PlayerId;
-  isCaptured: boolean;
-}
-
-export type CellValue = PlayerId | GamePiece | null;
-
-export interface Coordinate {
-  row: number;
-  col: number;
-}
+import { CellValue, Coordinate, PlayerId } from "@/types/game";
 
 export interface AIOptions {
   /** Milliseconds the search may use per move. Default: 800. */
@@ -172,7 +160,11 @@ function isPieceCaptured(
   return hasNeighbor && surrounded;
 }
 
-function countLiberties(board: CellValue[][], row: number, col: number): number {
+function countLiberties(
+  board: CellValue[][],
+  row: number,
+  col: number,
+): number {
   let n = 0;
   forEachNeighbor(row, col, (r, c) => {
     if (board[r][c] === null) n++;
@@ -207,7 +199,8 @@ function doMove(
   hash: number,
 ): MoveOutcome {
   const enemy = other(player);
-  let h = hash ^ zobristKey(row, col, 0) ^ zobristKey(row, col, stateOf(player));
+  let h =
+    hash ^ zobristKey(row, col, 0) ^ zobristKey(row, col, stateOf(player));
   board[row][col] = player;
 
   const undo: UndoRecord = { row, col, selfTrapped: false, captured: [] };
@@ -477,7 +470,15 @@ function quiescence(
         undoMove(board, res);
         continue;
       }
-      const score = -quiescence(board, -beta, -alpha, enemy, me, res.hash, qdepth - 1);
+      const score = -quiescence(
+        board,
+        -beta,
+        -alpha,
+        enemy,
+        me,
+        res.hash,
+        qdepth - 1,
+      );
       undoMove(board, res);
       if (score >= beta) return beta;
       if (score > alpha) alpha = score;
@@ -534,7 +535,16 @@ function negamax(
     const r = (flat / BOARD_SIZE) | 0;
     const c = flat % BOARD_SIZE;
     const res = doMove(board, r, c, turn, hash);
-    const score = -negamax(board, depth - 1, -beta, -alpha, enemy, me, res.hash, ply + 1);
+    const score = -negamax(
+      board,
+      depth - 1,
+      -beta,
+      -alpha,
+      enemy,
+      me,
+      res.hash,
+      ply + 1,
+    );
     undoMove(board, res);
 
     if (score > best) {
@@ -560,7 +570,8 @@ function negamax(
     }
   }
 
-  const flag = best <= alphaOrig ? FLAG_UPPER : best >= beta ? FLAG_LOWER : FLAG_EXACT;
+  const flag =
+    best <= alphaOrig ? FLAG_UPPER : best >= beta ? FLAG_LOWER : FLAG_EXACT;
   transposition.set(ttKey, { depth, score: best, flag, move: bestMove });
   return best;
 }
