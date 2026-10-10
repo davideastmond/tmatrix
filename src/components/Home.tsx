@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoomCreateResponse } from "@/types/api";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -72,12 +73,20 @@ export const Home: React.FC = () => {
         )}
       </form>
 
-      <a
-        href="/game"
-        className="mt-4 text-emerald-400 hover:text-emerald-300 underline text-sm"
-      >
-        Play vs CPU
-      </a>
+      <div className="mt-4 flex gap-6 text-sm">
+        <Link
+          href="/game"
+          className="text-emerald-400 hover:text-emerald-300 underline"
+        >
+          Play vs CPU
+        </Link>
+        <Link
+          href="/cpu-battle"
+          className="text-emerald-400 hover:text-emerald-300 underline"
+        >
+          Watch CPU vs CPU
+        </Link>
+      </div>
     </div>
   );
 };
