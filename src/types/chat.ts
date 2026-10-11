@@ -1,4 +1,5 @@
-export type ChatSenderRole = "player1" | "player2";
+import { PlayerId } from "@/types/game";
+export type ChatSenderRole = PlayerId;
 
 export interface ChatMessage {
   id: string;

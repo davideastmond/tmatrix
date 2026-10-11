@@ -1,6 +1,7 @@
 "use client";
 
 import { GameBoard } from "@/components/GameBoard"; // Update with your exact component path
+import { DifficultySelector } from "@/components/DifficultySelector";
 import { useEffect, useState } from "react";
 
 import { createInitialGameState, isBoardFull } from "@/lib/board-utils";
@@ -9,7 +10,6 @@ import { getBestMove, type Difficulty } from "@/lib/tmatrix-ai";
 import { GameState } from "@/types/game";
 
 const DIFFICULTY_STORAGE_KEY = "tmatrix:difficulty";
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 
 export default function HumanVsCpuGame() {
   // 1. Maintain the local game loop state
@@ -204,23 +204,8 @@ export default function HumanVsCpuGame() {
           )}
         </div>
         {/* Difficulty Selector */}
-        <div className="mt-4 inline-flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg p-1">
-          <span className="text-[11px] uppercase tracking-wider text-slate-400 px-2">
-            CPU difficulty
-          </span>
-          {DIFFICULTIES.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDifficulty(d)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold capitalize transition-colors cursor-pointer ${
-                difficulty === d
-                  ? "bg-emerald-500 text-slate-950"
-                  : "text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {d}
-            </button>
-          ))}
+        <div className="mt-4">
+          <DifficultySelector value={difficulty} onChange={setDifficulty} />
         </div>
       </header>
 

@@ -1,6 +1,14 @@
 import type { CellValue, GamePiece, PlayerId } from "../types/game";
 import { getNeighbors } from "./board-utils";
 
+interface TurnResult {
+  newBoard: CellValue[][];
+  /** Points earned by activePlayer from capturing opponent pieces this turn. */
+  moverPoints: number;
+  /** Points earned by the opponent because the newly placed piece was self-trapped. */
+  opponentPoints: number;
+}
+
 function getCellOwner(cell: CellValue): PlayerId | null {
   if (cell === null) return null;
   if (typeof cell === "string") return cell;
@@ -36,14 +44,6 @@ export function isPlacementInCaptureSituation(
   targetOwner: PlayerId,
 ): boolean {
   return isPieceCaptured(board, targetRow, targetCol, targetOwner);
-}
-
-export interface TurnResult {
-  newBoard: CellValue[][];
-  /** Points earned by activePlayer from capturing opponent pieces this turn. */
-  moverPoints: number;
-  /** Points earned by the opponent because the newly placed piece was self-trapped. */
-  opponentPoints: number;
 }
 
 export function processTurn(
